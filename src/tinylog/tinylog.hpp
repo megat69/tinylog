@@ -7,7 +7,7 @@
 #include <cassert>
 
 /// @brief Current version of TinyLog. Follows [Semantic Versioning](https://semver.org/).
-#define TINYLOG_VERSION "0.0.1"
+#define TINYLOG_VERSION "0.1.0"
 
 /// @brief If set to 1, makes sure TinyLog uses its own namespace for functions and classes ; but not macros. Is 1 by default.
 #ifndef TINYLOG_USE_NAMESPACE
@@ -77,7 +77,7 @@ private:
     inline static std::vector<Logger*> loggers{};
 
     /// @brief A pointer to the output stream for the string logging
-    inline static std::ostream* stringOutputStream = nullptr;
+    inline static std::vector<std::ostream*> stringOutputStreams = {};
 
     /// @brief Whether string logging is enabled
     inline static bool isStringOutputEnabled = false;
@@ -114,29 +114,42 @@ public:
      * @param message The message to log
      */
     void log(LogLevel givenLogLevel, const std::string& message) {
+        // Shortcut to exit the function if the log level does not match
         if (static_cast<char>(givenLogLevel) < static_cast<char>(getLogLevel())) return;
+
+        // String output
         if (isStringOutputEnabled) {
-            assert(stringOutputStream != nullptr);
-            *stringOutputStream << "[" << getLogLevelName(givenLogLevel, true) << "] " << message << "\n";
+            for (std::ostream* stringOutputStream : stringOutputStreams) {
+                assert(stringOutputStream != nullptr);
+                *stringOutputStream << "[" << getLogLevelName(givenLogLevel, true) << "] " << message << "\n";
+            }
         }
     }
 
     /**
      * @brief Enables logging to a given stream, as a string output.
-     * @warning Replaces the previous output stream with no further processing.
      * @param outputStream An output stream for the logging. Example : std::cout
      */
     static void enableStringOutput(std::ostream& outputStream) {
-        stringOutputStream = &outputStream;
         isStringOutputEnabled = true;
+        addStringOutput(outputStream);
+    }
+
+    /**
+     * @bref Adds another output stream to the string output.
+     * @param outputStream An output stream for the logging. Example : std::cout
+     */
+    static void addStringOutput(std::ostream& outputStream) {
+        assert(isStringOutputEnabled);
+        stringOutputStreams.push_back(&outputStream);
     }
 
     /**
      * @brief Disables logging as a string output.
-     * @warning Removes the previous output stream with no further processing.
+     * @warning Clears the previous output streams with no further processing.
      */
     static void disableStringOutput() {
-        stringOutputStream = nullptr;
+        stringOutputStreams.clear();
         isStringOutputEnabled = false;
     }
 

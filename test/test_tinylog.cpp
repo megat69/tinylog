@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 
 #include <tinylog.hpp>
 
@@ -15,8 +16,13 @@ void level1() {
 }
 
 int main() {
+    // Logger setup
     TinyLog::Logger logger;
     TinyLog::Logger::enableStringOutput(std::cout);
+    std::ofstream logFile("log.txt");
+    TinyLog::Logger::addStringOutput(logFile);
+
+    // Logger tests
     logger.log(TinyLog::INFO, "Hello debug users :D");
     logger.log(TinyLog::ERROR, "Hello all users :D");
 
