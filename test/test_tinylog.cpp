@@ -5,12 +5,12 @@
 
 void level2() {
     TinyLog::Logger logger(TinyLog::INHERIT);
-    logger.log(TinyLog::DEBUG, "Level 2");
+    logger.log(TinyLog::DEBUG, "Level 2", __FILENAME__, __LINE__);
 }
 
 void level1() {
     TinyLog::Logger logger(TinyLog::DEBUG);
-    logger.log(TinyLog::DEBUG, "Level 1");
+    TinyLog_log(TinyLog::DEBUG, "Level 1");
 
     level2();
 }
@@ -24,7 +24,7 @@ int main() {
 
     // Logger tests
     logger.log(TinyLog::INFO, "Hello debug users :D");
-    logger.log(TinyLog::ERROR, "Hello all users :D");
+    TinyLog_logc(logger, TinyLog::ERROR, "Hello all users :D");
 
     level1();
 

@@ -7,7 +7,7 @@
 #include <cassert>
 
 /// @brief Current version of TinyLog. Follows [Semantic Versioning](https://semver.org/).
-#define TINYLOG_VERSION "0.1.0"
+#define TINYLOG_VERSION "0.2.0"
 
 /// @brief If set to 1, makes sure TinyLog uses its own namespace for functions and classes ; but not macros. Is 1 by default.
 #ifndef TINYLOG_USE_NAMESPACE
@@ -31,6 +31,12 @@
 #else
 #define TINYLOG_DEFAULT_LOG_LEVEL TINYLOG_DEFAULT_RELEASE_MODE_LOG_LEVEL
 #endif
+#endif
+
+#ifdef SOURCE_PATH_SIZE
+#define __FILENAME__ (__FILE__ + SOURCE_PATH_SIZE)
+#else
+#define __FILENAME__ __FILE__
 #endif
 
 #if TINYLOG_USE_NAMESPACE == 1
@@ -112,8 +118,10 @@ public:
      * @brief Logs the given message if the given log level is above the current log level
      * @param givenLogLevel The log level for this log
      * @param message The message to log
+     * @param filePath The path to the file where this function is called. Not displayed by default.
+     * @param lineNumber The line number of the file where this function is called. Not displayed by default.
      */
-    void log(LogLevel givenLogLevel, const std::string& message) {
+    void log(LogLevel givenLogLevel, const std::string& message, std::string filePath = "", int lineNumber = -1) {
         // Shortcut to exit the function if the log level does not match
         if (static_cast<char>(givenLogLevel) < static_cast<char>(getLogLevel())) return;
 
@@ -121,7 +129,18 @@ public:
         if (isStringOutputEnabled) {
             for (std::ostream* stringOutputStream : stringOutputStreams) {
                 assert(stringOutputStream != nullptr);
-                *stringOutputStream << "[" << getLogLevelName(givenLogLevel, true) << "] " << message << "\n";
+                *stringOutputStream << "[" << getLogLevelName(givenLogLevel, true) << "] ";
+                if (filePath != "") {
+                    *stringOutputStream << filePath << " ";
+                }
+                if (lineNumber != -1) {
+                    *stringOutputStream << "(line " << lineNumber << ") ";
+                }
+                if (filePath != "" || lineNumber != -1) {
+                    *stringOutputStream << "- ";
+                }
+                *stringOutputStream << message;
+                *stringOutputStream << "\n";
             }
         }
     }
@@ -166,3 +185,17 @@ public:
 #if TINYLOG_USE_NAMESPACE == 1
 }  // TinyLog
 #endif
+
+/**
+ * @brief Logs the given message if the given log level is above the current log level
+ * @param givenLogLevel The log level for this log
+ * @param message The message to log
+ * @note Automatically fills in the filename and the line number
+ * @warning Assumes the logger name is `logger`
+ */
+#define TinyLog_log(level, message) logger.log(level, message, __FILENAME__, __LINE__)
+
+/**
+ * @brief Alternative to the `TinyLog_log` macro, with a custom logger name. See the docs at the `TinyLog_log` macro.
+ */
+#define TinyLog_logc(logger, level, message) logger.log(level, message, __FILENAME__, __LINE__)
