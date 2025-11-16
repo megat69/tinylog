@@ -5,9 +5,10 @@
 #include <vector>
 #include <ostream>
 #include <cassert>
+#include <ctime>
 
 /// @brief Current version of TinyLog. Follows [Semantic Versioning](https://semver.org/).
-#define TINYLOG_VERSION "0.2.0"
+#define TINYLOG_VERSION "0.3.0"
 
 /// @brief If set to 1, makes sure TinyLog uses its own namespace for functions and classes ; but not macros. Is 1 by default.
 #ifndef TINYLOG_USE_NAMESPACE
@@ -121,7 +122,7 @@ public:
      * @param filePath The path to the file where this function is called. Not displayed by default.
      * @param lineNumber The line number of the file where this function is called. Not displayed by default.
      */
-    void log(LogLevel givenLogLevel, const std::string& message, std::string filePath = "", int lineNumber = -1) {
+    void log(LogLevel givenLogLevel, const std::string& message, std::string filePath = "", int lineNumber = -1, bool showTimestamp = true) {
         // Shortcut to exit the function if the log level does not match
         if (static_cast<char>(givenLogLevel) < static_cast<char>(getLogLevel())) return;
 
@@ -130,6 +131,13 @@ public:
             for (std::ostream* stringOutputStream : stringOutputStreams) {
                 assert(stringOutputStream != nullptr);
                 *stringOutputStream << "[" << getLogLevelName(givenLogLevel, true) << "] ";
+                if (showTimestamp) {
+                    std::time_t now;
+                    std::time(&now);
+                    char timestampBuffer[sizeof "1970-01-01T00:00:00Z"];
+                    std::strftime(timestampBuffer, sizeof timestampBuffer, "%FT%TZ", std::gmtime(&now));
+                    *stringOutputStream << timestampBuffer << " - ";
+                }
                 if (filePath != "") {
                     *stringOutputStream << filePath << " ";
                 }
