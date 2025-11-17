@@ -6,9 +6,10 @@
 #include <ostream>
 #include <cassert>
 #include <ctime>
+#include <string>
 
 /// @brief Current version of TinyLog. Follows [Semantic Versioning](https://semver.org/).
-#define TINYLOG_VERSION "0.3.0"
+#define TINYLOG_VERSION "0.4.0"
 
 /// @brief If set to 1, makes sure TinyLog uses its own namespace for functions and classes ; but not macros. Is 1 by default.
 #ifndef TINYLOG_USE_NAMESPACE
@@ -32,6 +33,11 @@
 #else
 #define TINYLOG_DEFAULT_LOG_LEVEL TINYLOG_DEFAULT_RELEASE_MODE_LOG_LEVEL
 #endif
+#endif
+
+/// @brief If set to 1, log extras will be put on their own separate lines
+#ifndef TINYLOG_EXTRAS_ON_SEPARATE_LINES
+#define TINYLOG_EXTRAS_ON_SEPARATE_LINES 0
 #endif
 
 #ifdef SOURCE_PATH_SIZE
@@ -119,10 +125,11 @@ public:
      * @brief Logs the given message if the given log level is above the current log level
      * @param givenLogLevel The log level for this log
      * @param message The message to log
+     * @param extras An ensemble of strings to be displayed after the message
      * @param filePath The path to the file where this function is called. Not displayed by default.
      * @param lineNumber The line number of the file where this function is called. Not displayed by default.
      */
-    void log(LogLevel givenLogLevel, const std::string& message, std::string filePath = "", int lineNumber = -1, bool showTimestamp = true) {
+    void log(LogLevel givenLogLevel, const std::string& message, std::initializer_list<std::string> extras = {}, std::string filePath = "", int lineNumber = -1, bool showTimestamp = true) {
         // Shortcut to exit the function if the log level does not match
         if (static_cast<char>(givenLogLevel) < static_cast<char>(getLogLevel())) return;
 
@@ -130,7 +137,8 @@ public:
         if (isStringOutputEnabled) {
             for (std::ostream* stringOutputStream : stringOutputStreams) {
                 assert(stringOutputStream != nullptr);
-                *stringOutputStream << "[" << getLogLevelName(givenLogLevel, true) << "] ";
+                std::string logLevelName = getLogLevelName(givenLogLevel, true);
+                *stringOutputStream << "[" << logLevelName << "] ";
                 if (showTimestamp) {
                     std::time_t now;
                     std::time(&now);
@@ -148,6 +156,12 @@ public:
                     *stringOutputStream << "- ";
                 }
                 *stringOutputStream << message;
+                if (extras.size() > 0) {
+                    *stringOutputStream << " - EXTRAS " << ((TINYLOG_EXTRAS_ON_SEPARATE_LINES) ? ":" : "- ");
+                }
+                for (const std::string& extra : extras) {
+                    *stringOutputStream << ((TINYLOG_EXTRAS_ON_SEPARATE_LINES) ? ("\n" + std::string(logLevelName.size() + 3, ' ') + "- ") : " ") << extra << " ;";
+                }
                 *stringOutputStream << "\n";
             }
         }
@@ -195,15 +209,25 @@ public:
 #endif
 
 /**
- * @brief Logs the given message if the given log level is above the current log level
- * @param givenLogLevel The log level for this log
- * @param message The message to log
- * @note Automatically fills in the filename and the line number
- * @warning Assumes the logger name is `logger`
+ * @brief Returns a string containing the given expression and its value
+ * @param expression A C++ expression that can be converted to a string
+ * @returns The string `"<EXPRESSION> = <VALUE>"` where `<EXPRESSION>` is the stringified `expression` parameter
+ *      and `<VALUE>` is the value of said expression.
  */
-#define TinyLog_log(level, message) logger.log(level, message, __FILENAME__, __LINE__)
+#define TinyLog_debug_expression(expression) (std::string(#expression) + std::string(" = ") + std::to_string(expression))
 
 /**
- * @brief Alternative to the `TinyLog_log` macro, with a custom logger name. See the docs at the `TinyLog_log` macro.
+ * @brief Logs the given message if the given log level is above the current log level, along with any extra strings wanted
+ * @param givenLogLevel The log level for this log
+ * @param message The message to log
+ * @param extras... Any number of strings to be appended to the output
+ * @note Automatically fills in the filename and the line number
+ * @note The extras argument can be used with the `TinyLog_debug_expression` macro
+ * @warning Assumes the logger name is `logger`
  */
-#define TinyLog_logc(logger, level, message) logger.log(level, message, __FILENAME__, __LINE__)
+#define TinyLog_log(level, message, ...) logger.log(level, message, {__VA_ARGS__}, __FILENAME__, __LINE__)
+
+/**
+ * @brief Alternative to the `TinyLog_log_pro` macro, with a custom logger name. See the docs at the `TinyLog_log_pro` macro.
+ */
+#define TinyLog_logc(logger, level, message, ...) logger.log(level, message, {__VA_ARGS__}, __FILENAME__, __LINE__)

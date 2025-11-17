@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-11-17
+
+### [Added]
+
+- Extra strings to be displayed in the logs using the `extras` system, helping understand the debug better
+- `TINYLOG_EXTRAS_ON_SEPARATE_LINES` macro, adds separate lines between each extra if set to 1. 0 by default.
+- `TinyLog_debug_expression` macro, returns a string of the expression and its value, helps with debugging/logging state
+
+### [Changed]
+
+- Each log function/macro can now accept `extras`
+
 ## [0.3.0] - 2025-11-16
 
 ### [Added]
