@@ -136,33 +136,7 @@ public:
         // String output
         if (isStringOutputEnabled) {
             for (std::ostream* stringOutputStream : stringOutputStreams) {
-                assert(stringOutputStream != nullptr);
-                std::string logLevelName = getLogLevelName(givenLogLevel, true);
-                *stringOutputStream << "[" << logLevelName << "] ";
-                if (showTimestamp) {
-                    std::time_t now;
-                    std::time(&now);
-                    char timestampBuffer[sizeof "1970-01-01T00:00:00Z"];
-                    std::strftime(timestampBuffer, sizeof timestampBuffer, "%FT%TZ", std::gmtime(&now));
-                    *stringOutputStream << timestampBuffer << " - ";
-                }
-                if (filePath != "") {
-                    *stringOutputStream << filePath << " ";
-                }
-                if (lineNumber != -1) {
-                    *stringOutputStream << "(line " << lineNumber << ") ";
-                }
-                if (filePath != "" || lineNumber != -1) {
-                    *stringOutputStream << "- ";
-                }
-                *stringOutputStream << message;
-                if (extras.size() > 0) {
-                    *stringOutputStream << " - EXTRAS " << ((TINYLOG_EXTRAS_ON_SEPARATE_LINES) ? ":" : "- ");
-                }
-                for (const std::string& extra : extras) {
-                    *stringOutputStream << ((TINYLOG_EXTRAS_ON_SEPARATE_LINES) ? ("\n" + std::string(logLevelName.size() + 3, ' ') + "- ") : " ") << extra << " ;";
-                }
-                *stringOutputStream << "\n";
+                logToStringOutputStream(stringOutputStream, givenLogLevel, showTimestamp, filePath, lineNumber, message, extras);
             }
         }
     }
@@ -211,6 +185,37 @@ public:
     static void setLoggerChainCapacity(size_t capacity) {
         assert(capacity > loggers.size());  // Avoids UB
         loggers.reserve(capacity);
+    }
+
+private:
+    void logToStringOutputStream(std::ostream *stringOutputStream, TinyLog::LogLevel givenLogLevel, bool showTimestamp, std::string &filePath, int lineNumber, const std::string &message, std::initializer_list<std::string> &extras) {
+        assert(stringOutputStream != nullptr);
+        std::string logLevelName = getLogLevelName(givenLogLevel, true);
+        *stringOutputStream << "[" << logLevelName << "] ";
+        if (showTimestamp) {
+            std::time_t now;
+            std::time(&now);
+            char timestampBuffer[sizeof "1970-01-01T00:00:00Z"];
+            std::strftime(timestampBuffer, sizeof timestampBuffer, "%FT%TZ", std::gmtime(&now));
+            *stringOutputStream << timestampBuffer << " - ";
+        }
+        if (filePath != "") {
+            *stringOutputStream << filePath << " ";
+        }
+        if (lineNumber != -1) {
+            *stringOutputStream << "(line " << lineNumber << ") ";
+        }
+        if (filePath != "" || lineNumber != -1) {
+            *stringOutputStream << "- ";
+        }
+        *stringOutputStream << message;
+        if (extras.size() > 0) {
+            *stringOutputStream << " - EXTRAS " << ((TINYLOG_EXTRAS_ON_SEPARATE_LINES) ? ":" : "- ");
+        }
+        for (const std::string &extra : extras) {
+            *stringOutputStream << ((TINYLOG_EXTRAS_ON_SEPARATE_LINES) ? ("\n" + std::string(logLevelName.size() + 3, ' ') + "- ") : " ") << extra << " ;";
+        }
+        *stringOutputStream << "\n";
     }
 };
 
