@@ -202,6 +202,16 @@ public:
     static bool isEnabledStringOutput() {
         return isStringOutputEnabled;
     }
+
+    /**
+     * @brief Pre-allocates enough space for n loggers
+     * @param capacity The new logger chain capacity
+     * @warning `capacity` must be higher than the current amount of loggers in the chain. An assertion will check that.
+     */
+    static void setLoggerChainCapacity(size_t capacity) {
+        assert(capacity > loggers.size());  // Avoids UB
+        loggers.reserve(capacity);
+    }
 };
 
 #if TINYLOG_USE_NAMESPACE == 1
