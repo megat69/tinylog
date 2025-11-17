@@ -9,7 +9,7 @@
 #include <string>
 
 /// @brief Current version of TinyLog. Follows [Semantic Versioning](https://semver.org/).
-#define TINYLOG_VERSION "0.5.0"
+#define TINYLOG_VERSION "0.5.1"
 
 /// @brief If set to 1, makes sure TinyLog uses its own namespace for functions and classes ; but not macros. Is 1 by default.
 #ifndef TINYLOG_USE_NAMESPACE
