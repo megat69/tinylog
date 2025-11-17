@@ -19,9 +19,13 @@ void level1() {
 int main() {
     // Logger setup
     TinyLog::Logger logger;
-    TinyLog::Logger::enableStringOutput(std::cout);
     std::ofstream logFile("log.txt");
-    TinyLog::Logger::addStringOutput(logFile);
+    TinyLog::Logger::enableStringOutput(logFile);
+    // TinyLog::Logger::addStringOutput(std::cout);
+
+    TinyLog::Logger::enableJsonOutput(std::cout);
+    std::ofstream jsonLogFile("log.json");
+    TinyLog::Logger::addJsonOutput(jsonLogFile);
 
     // Logger tests
     logger.log(TinyLog::INFO, "Hello debug users :D");
@@ -29,6 +33,8 @@ int main() {
 
     int a = 5;
     TinyLog_log(TinyLog::FATAL, "Debugging an expression", TinyLog_debug_expression(a), TinyLog_debug_expression(a == 5), "Extra string");
+
+    TinyLog_log(TinyLog::INFO, "This is a test with \"double quotes\"");
 
     level1();
 

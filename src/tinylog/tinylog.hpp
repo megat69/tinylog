@@ -7,9 +7,10 @@
 #include <cassert>
 #include <ctime>
 #include <string>
+#include <algorithm>
 
 /// @brief Current version of TinyLog. Follows [Semantic Versioning](https://semver.org/).
-#define TINYLOG_VERSION "0.5.1"
+#define TINYLOG_VERSION "0.6.0"
 
 /// @brief If set to 1, makes sure TinyLog uses its own namespace for functions and classes ; but not macros. Is 1 by default.
 #ifndef TINYLOG_USE_NAMESPACE
@@ -89,11 +90,20 @@ private:
     /// @brief A list of loggers as a hierarchy
     inline static std::vector<Logger*> loggers{};
 
-    /// @brief A pointer to the output stream for the string logging
+    /// @brief A vector of pointers to the output stream for the string logging
     inline static std::vector<std::ostream*> stringOutputStreams = {};
 
     /// @brief Whether string logging is enabled
     inline static bool isStringOutputEnabled = false;
+
+    /// @brief A vector of pointer to the output streams for JSON logging
+    inline static std::vector<std::ostream*> jsonOutputStreams = {};
+
+    /// @brief Whether JSON logging is enabled
+    inline static bool isJsonOutputEnabled = false;
+
+    /// @brief How many logs have been sent to JSON
+    inline static long long jsonOutputsCount = 0;
 
     /// @brief The log level for this logger
     LogLevel currentLogLevel;
@@ -102,6 +112,11 @@ public:
     explicit Logger(LogLevel logLevel = INHERIT) {
         loggers.push_back(this);
         currentLogLevel = logLevel;
+    }
+
+    ~Logger() {
+        disableStringOutput();
+        disableJsonOutput();
     }
 
     /**
@@ -139,6 +154,24 @@ public:
                 logToStringOutputStream(stringOutputStream, givenLogLevel, showTimestamp, filePath, lineNumber, message, extras);
             }
         }
+
+        // JSON output
+        if (isJsonOutputEnabled) {
+            // Copies strings and escapes quotes inside them
+            std::string messageCopy = message;
+            std::vector<std::string> extrasCopy = extras;
+            std::replace(messageCopy.begin(), messageCopy.end(), '\"', '\'');
+            for (std::string& extra : extrasCopy) {
+                std::replace(extra.begin(), extra.end(), '\"', '\'');
+            }
+
+            for (std::ostream* jsonOutputStream : jsonOutputStreams) {
+                logToJsonOutputStream(jsonOutputStream, givenLogLevel, showTimestamp, filePath, lineNumber, messageCopy, extrasCopy);
+            }
+
+            // Remembers how many JSON logs have been outputted
+            jsonOutputsCount++;
+        }
     }
 
     /**
@@ -169,6 +202,39 @@ public:
     }
 
     /**
+     * @brief Enables logging to a given stream, as a JSON output.
+     * @param outputStream An output stream for the logging. Example : std::cout
+     */
+    static void enableJsonOutput(std::ostream& outputStream) {
+        isJsonOutputEnabled = true;
+        jsonOutputsCount = 0;
+        addJsonOutput(outputStream);
+    }
+
+    /**
+     * @bref Adds another output stream to the JSON output.
+     * @param outputStream An output stream for the logging. Example : std::cout
+     */
+    static void addJsonOutput(std::ostream& outputStream) {
+        assert(isJsonOutputEnabled);
+        jsonOutputStreams.push_back(&outputStream);
+        outputStream << "[";
+    }
+
+    /**
+     * @brief Disables logging as a JSON output.
+     * @warning Clears the previous output streams with minor processing.
+     */
+    static void disableJsonOutput() {
+        for (std::ostream* outputStream : jsonOutputStreams) {
+            *outputStream << "]";
+        }
+        jsonOutputStreams.clear();
+        isJsonOutputEnabled = false;
+        jsonOutputsCount = 0;
+    }
+
+    /**
      * @brief Returns whether the string output is enabled
      * @note This function should be marked as const, but is a static function.
      * @returns Whether the string output is enabled.
@@ -188,16 +254,37 @@ public:
     }
 
 private:
-    void logToStringOutputStream(std::ostream *stringOutputStream, TinyLog::LogLevel givenLogLevel, bool showTimestamp, std::string &filePath, int lineNumber, const std::string &message, std::initializer_list<std::string> &extras) {
+    /**
+     * @brief Calculates the ISO 8601 timestamp, and returns it.
+     * @returns The current ISO 8601 timestamp.
+     */
+    std::string getIso8601Timestamp() {
+        std::time_t now;
+        std::time(&now);
+        char timestampBuffer[sizeof "1970-01-01T00:00:00Z"];
+        std::strftime(timestampBuffer, sizeof timestampBuffer, "%FT%TZ", std::gmtime(&now));
+        return timestampBuffer;
+    }
+
+    /**
+     * @brief Escapes the given string's double quotes
+     * @param stringToEscape A string with possibly double quotes inside, to be escaped.
+     * @warning This operation is in place.
+     */
+    void escapeString(std::string& stringToEscape) {
+        std::replace(stringToEscape.begin(), stringToEscape.end(), '\"', '\'');
+    }
+
+    /**
+     * @brief Logs to the given outputs stream, as a string
+     */
+    void logToStringOutputStream(std::ostream *stringOutputStream, LogLevel givenLogLevel, bool showTimestamp, const std::string& filePath, int lineNumber, const std::string& message, std::initializer_list<std::string>& extras) {
         assert(stringOutputStream != nullptr);
         std::string logLevelName = getLogLevelName(givenLogLevel, true);
         *stringOutputStream << "[" << logLevelName << "] ";
         if (showTimestamp) {
-            std::time_t now;
-            std::time(&now);
-            char timestampBuffer[sizeof "1970-01-01T00:00:00Z"];
-            std::strftime(timestampBuffer, sizeof timestampBuffer, "%FT%TZ", std::gmtime(&now));
-            *stringOutputStream << timestampBuffer << " - ";
+            std::string timestamp = getIso8601Timestamp();
+            *stringOutputStream << timestamp << " - ";
         }
         if (filePath != "") {
             *stringOutputStream << filePath << " ";
@@ -216,6 +303,29 @@ private:
             *stringOutputStream << ((TINYLOG_EXTRAS_ON_SEPARATE_LINES) ? ("\n" + std::string(logLevelName.size() + 3, ' ') + "- ") : " ") << extra << " ;";
         }
         *stringOutputStream << "\n";
+    }
+
+    /**
+     * @brief Logs to the given outputs stream, as JSON
+     */
+    void logToJsonOutputStream(std::ostream *jsonOutputStream, LogLevel givenLogLevel, bool showTimestamp, std::string& filePath, int lineNumber, const std::string& message, std::vector<std::string>& extras) {
+        if (jsonOutputsCount > 0) {
+            *jsonOutputStream << ",";
+        }
+        *jsonOutputStream << "{\"severity\":\"" << getLogLevelName(givenLogLevel) << "\",";
+        *jsonOutputStream << "\"message\":\"" << message << "\",";
+        *jsonOutputStream << "\"timestamp\":\"" << getIso8601Timestamp() << "\"";
+        if (extras.size() > 0) {
+            *jsonOutputStream << ",\"extras\":[";
+            for (int i = 0; i < extras.size(); i++) {
+                *jsonOutputStream << "\"" << extras.at(i) << "\"";
+                if (i < extras.size() - 1) {
+                    *jsonOutputStream << ",";
+                }
+            }
+            *jsonOutputStream << "]";
+        }
+        *jsonOutputStream << "}";
     }
 };
 
