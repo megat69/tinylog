@@ -9,7 +9,7 @@
 #include <string>
 
 /// @brief Current version of TinyLog. Follows [Semantic Versioning](https://semver.org/).
-#define TINYLOG_VERSION "0.4.0"
+#define TINYLOG_VERSION "0.5.0"
 
 /// @brief If set to 1, makes sure TinyLog uses its own namespace for functions and classes ; but not macros. Is 1 by default.
 #ifndef TINYLOG_USE_NAMESPACE
@@ -201,6 +201,16 @@ public:
      */
     static bool isEnabledStringOutput() {
         return isStringOutputEnabled;
+    }
+
+    /**
+     * @brief Pre-allocates enough space for n loggers
+     * @param capacity The new logger chain capacity
+     * @warning `capacity` must be higher than the current amount of loggers in the chain. An assertion will check that.
+     */
+    static void setLoggerChainCapacity(size_t capacity) {
+        assert(capacity > loggers.size());  // Avoids UB
+        loggers.reserve(capacity);
     }
 };
 
